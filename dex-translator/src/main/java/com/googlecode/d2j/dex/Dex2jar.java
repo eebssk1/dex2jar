@@ -58,7 +58,7 @@ public final class Dex2jar {
         ClassVisitorFactory cvf = new ClassVisitorFactory() {
             @Override
             public ClassVisitor create(final String name) {
-                final ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+                final ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
                 final LambadaNameSafeClassAdapter rca = new LambadaNameSafeClassAdapter(cw);
                 return new ClassVisitor(Constants.ASM_VERSION, rca) {
                     @Override

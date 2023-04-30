@@ -24,6 +24,7 @@ import java.util.Random;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
 
 public final class Dex2jar {
 
@@ -56,11 +57,47 @@ public final class Dex2jar {
             exceptionHandler.handleFileException(ex);
         }
         ClassVisitorFactory cvf = new ClassVisitorFactory() {
+            public String curSupnam = null;
+            public boolean isInterf = false;
             @Override
             public ClassVisitor create(final String name) {
-                final ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+                final ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES) {
+                    @Override
+                    protected String getCommonSuperClass(String type1, String type2) {
+                        if(type1.equals("java/lang/Object") || type2.equals("java/lang/Object") || isInterf)
+                            return "java/lang/Object";
+                        String name;
+                        String name2 = "none";
+                        try {
+                            return super.getCommonSuperClass(type1, type2);
+                        } catch (TypeNotPresentException e) {
+                            name = e.typeName();
+                        };
+                        if (name.equals(type1)) {
+                            name2 = type2;
+                        } else if (name.equals(type2)) {
+                            name2 = type1;
+                        }
+                        if(name2.equals(curSupnam))
+                            return curSupnam;
+                        System.err.printf("Another associated class is %s for %s\n", name2, name);
+                        // FIXME This may be a safer choice for now but we really need to find the real one.
+                        System.err.printf("Assuming java/lang/Object !\n");
+                        return "java/lang/Object";
+                    }
+                };
                 final LambadaNameSafeClassAdapter rca = new LambadaNameSafeClassAdapter(cw);
                 return new ClassVisitor(Constants.ASM_VERSION, rca) {
+                    @Override
+                    public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
+                        super.visit(version, access, name, signature, superName, interfaces);
+                        curSupnam = superName;
+                        if((access & Opcodes.ACC_INTERFACE) != 0){
+                            isInterf = true;
+                        } else {
+                            isInterf = false;
+                        }
+                    }
                     @Override
                     public void visitEnd() {
                         super.visitEnd();
